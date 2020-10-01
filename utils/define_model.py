@@ -19,7 +19,7 @@ from random import randint
 from utils import data_augmentation, prepare_dataset
 
 
-def get_unet(minimum_kernel=32, do=0, activation=ReLU, iteration=1):
+def get_unet(minimum_kernel=32, do=0, activation=ReLU, iteration=1, lr=1e-3):
     inputs = Input((None, None, 3))
     conv1 = Dropout(do)(activation()(Conv2D(minimum_kernel, (3, 3), padding='same')(inputs)))
     conv1 = Dropout(do)(activation()(Conv2D(minimum_kernel, (3, 3), padding='same')(conv1)))
@@ -141,6 +141,15 @@ def get_unet(minimum_kernel=32, do=0, activation=ReLU, iteration=1):
     outs.append(out2)
 
     model = Model(inputs=[inputs], outputs=outs)
+    # GORANA zbudz 29.09. #######################
+    # model.trainable = False
+    lay_no = int(len(model.layers)*.8)
+    for layer in model.layers[35:]:
+        layer.trainable = False
+    # assert model.layers[0].trainable == True
+    #     layer.trainable = True
+    # assert model.layers[0].trainable == True
+    #############################################
     count = 0
     for i, layer in enumerate(model.layers):
         if not layer.name.startswith('model1_') and not layer.name.startswith('out'):
@@ -154,10 +163,15 @@ def get_unet(minimum_kernel=32, do=0, activation=ReLU, iteration=1):
     loss_funcs.update({'final_out': losses.binary_crossentropy})
 
     metrics = {
-        "final_out": ['accuracy']
+        "final_out": [
+            tf.keras.metrics.Accuracy(),
+            tf.keras.metrics.Precision(),
+            tf.keras.metrics.Recall()
+        ]
     }
 
-    model.compile(optimizer=Adam(lr=1e-3), loss=loss_funcs, metrics=metrics)
+    model.compile(optimizer=Adam(lr=lr), loss=loss_funcs, metrics=metrics)
+    model.summary()
 
     return model
 

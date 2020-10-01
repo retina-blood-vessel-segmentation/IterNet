@@ -15,13 +15,25 @@ raw_training_x_path_CHASEDB1 = './data/CHASEDB1/training/images/*.jpg'
 raw_training_y_path_CHASEDB1 = './data/CHASEDB1/training/1st_manual/*1stHO.png'
 raw_test_x_path_CHASEDB1 = './data/CHASEDB1/test/images/*.jpg'
 raw_test_y_path_CHASEDB1 = './data/CHASEDB1/test/1st_manual/*1stHO.png'
-raw_test_mask_path_CHASEDB1 = './data/CHASEDB1/test/mask/*mask.png'
+raw_test_mask_path_CHASEDB1 = './data/CHASEDB1/test/mask/*.png'
 
 raw_training_x_path_STARE = './data/STARE/training/stare-images/*.ppm'
 raw_training_y_path_STARE = './data/STARE/training/labels-ah/*.ppm'
 raw_test_x_path_STARE = './data/STARE/test/stare-images/*.ppm'
 raw_test_y_path_STARE = './data/STARE/test/labels-ah/*.ppm'
-raw_test_mask_path_STARE = './data/STARE/test/mask/*mask.png'
+raw_test_mask_path_STARE = './data/STARE/test/mask/*.png'
+
+raw_training_x_path_HRF = './data/HRF/training/images/*'
+raw_training_y_path_HRF = './data/HRF/training/1st_manual/*.tif'
+raw_test_x_path_HRF = './data/HRF/test/images/*'
+raw_test_y_path_HRF = './data/HRF/test/1st_manual/*.tif'
+raw_test_mask_path_HRF = './data/HRF/test/mask/*.tif'
+
+raw_training_x_path_DROPS = './data/DROPS/training/images/*'
+raw_training_y_path_DROPS = './data/DROPS/training/1st_manual/*.png'
+raw_test_x_path_DROPS = './data/DROPS/test/images/*'
+raw_test_y_path_DROPS = './data/DROPS/test/1st_manual/*.png'
+raw_test_mask_path_DROPS = './data/DROPS/test/mask/*.png'
 
 raw_data_path = None
 raw_data_path_DRIVE = [raw_training_x_path_DRIVE, raw_training_y_path_DRIVE, raw_test_x_path_DRIVE,
@@ -30,12 +42,18 @@ raw_data_path_CHASEDB1 = [raw_training_x_path_CHASEDB1, raw_training_y_path_CHAS
                           raw_test_y_path_CHASEDB1, raw_test_mask_path_CHASEDB1]
 raw_data_path_STARE = [raw_training_x_path_STARE, raw_training_y_path_STARE, raw_test_x_path_STARE,
                        raw_test_y_path_STARE, raw_test_mask_path_STARE]
+raw_data_path_HRF = [raw_training_x_path_HRF, raw_training_y_path_HRF, raw_test_x_path_HRF,
+                       raw_test_y_path_HRF, raw_test_mask_path_HRF]
+raw_data_path_DROPS = [raw_training_x_path_DROPS, raw_training_y_path_DROPS, raw_test_x_path_DROPS,
+                        raw_test_y_path_DROPS, raw_test_mask_path_DROPS]
 
 HDF5_data_path = './data/HDF5/'
 
 DESIRED_DATA_SHAPE_DRIVE = (576, 576)
 DESIRED_DATA_SHAPE_CHASEDB1 = (960, 960)
 DESIRED_DATA_SHAPE_STARE = (592, 592)
+DESIRED_DATA_SHAPE_HRF = (2336, 2336)
+DESIRED_DATA_SHAPE_DROPS = (640, 640)
 DESIRED_DATA_SHAPE = None
 
 
@@ -100,6 +118,10 @@ def prepareDataset(dataset):
         DESIRED_DATA_SHAPE = DESIRED_DATA_SHAPE_CHASEDB1
     elif dataset == 'STARE':
         DESIRED_DATA_SHAPE = DESIRED_DATA_SHAPE_STARE
+    elif dataset == 'HRF':
+        DESIRED_DATA_SHAPE = DESIRED_DATA_SHAPE_HRF
+    elif dataset == 'DROPS':
+        DESIRED_DATA_SHAPE = DESIRED_DATA_SHAPE_DROPS
 
     if dataset == 'DRIVE':
         raw_data_path = raw_data_path_DRIVE
@@ -107,6 +129,10 @@ def prepareDataset(dataset):
         raw_data_path = raw_data_path_CHASEDB1
     elif dataset == 'STARE':
         raw_data_path = raw_data_path_STARE
+    elif dataset == 'HRF':
+        raw_data_path = raw_data_path_HRF
+    elif dataset == 'DROPS':
+        raw_data_path = raw_data_path_DROPS
 
     if isHDF5exists(raw_data_path, HDF5_data_path):
         return
@@ -131,6 +157,10 @@ def getTrainingData(XorY, dataset):
         raw_training_x_path, raw_training_y_path = raw_data_path_CHASEDB1[:2]
     elif dataset == 'STARE':
         raw_training_x_path, raw_training_y_path = raw_data_path_STARE[:2]
+    elif dataset == 'HRF':
+        raw_training_x_path, raw_training_y_path = raw_data_path_HRF[:2]
+    elif dataset == 'DROPS':
+        raw_training_x_path, raw_training_y_path = raw_data_path_DROPS[:2]
 
     if XorY == 0:
         raw_splited = raw_training_x_path.split('/')
@@ -153,6 +183,10 @@ def getTestData(XorYorMask, dataset):
         raw_test_x_path, raw_test_y_path, raw_test_mask_path = raw_data_path_CHASEDB1[2:]
     elif dataset == 'STARE':
         raw_test_x_path, raw_test_y_path, raw_test_mask_path = raw_data_path_STARE[2:]
+    elif dataset == 'HRF':
+        raw_test_x_path, raw_test_y_path, raw_test_mask_path = raw_data_path_HRF[2:]
+    elif dataset == 'DROPS':
+        raw_test_x_path, raw_test_y_path, raw_test_mask_path = raw_data_path_DROPS[2:]
 
     if XorYorMask == 0:
         raw_splited = raw_test_x_path.split('/')
