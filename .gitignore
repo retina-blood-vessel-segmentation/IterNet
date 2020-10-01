@@ -1,7 +1,8 @@
-data/*
+data/**
 .vscode/*
-output/*
+output/**
 logs/*
+!**/.gitkeep
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -108,3 +109,6 @@ venv.bak/
 # mypy
 .mypy_cache/
 *.DS_Store
+
+# Jetbrains Pycharm
+.idea
