@@ -17,9 +17,10 @@ from keras.optimizers import Adam
 from numpy import random
 from random import randint
 from utils import data_augmentation, prepare_dataset
+from keras.utils import multi_gpu_model
 
 
-def get_unet(minimum_kernel=32, do=0, activation=ReLU, iteration=1, lr=1e-3):
+def get_unet(minimum_kernel=32, do=0, activation=ReLU, iteration=1, lr=1e-3,gpus=1,pretrained_model=None):
     inputs = Input((None, None, 3))
     conv1 = Dropout(do)(activation()(Conv2D(minimum_kernel, (3, 3), padding='same')(inputs)))
     conv1 = Dropout(do)(activation()(Conv2D(minimum_kernel, (3, 3), padding='same')(conv1)))
@@ -170,10 +171,24 @@ def get_unet(minimum_kernel=32, do=0, activation=ReLU, iteration=1, lr=1e-3):
         ]
     }
 
-    model.compile(optimizer=Adam(lr=lr), loss=loss_funcs, metrics=metrics)
-    model.summary()
+    if pretrained_model is not None:
+        try:
+            model.load_weights(pretrained_model, by_name=True)
+            print('> Loaded pretrained model from path %s.' % pretrained_model)
+        except:
+            print('> Unable to load pretrained model on path %s.' % pretrained_model)
+            pass
 
-    return model
+    if(gpus >= 2):
+        pmod = multi_gpu_model(model, gpus)
+        pmod.compile(optimizer=Adam(lr=lr), loss=loss_funcs, metrics=metrics)
+        pmod.summary()
+        return pmod
+    else:
+        model.compile(optimizer=Adam(lr=lr), loss=loss_funcs, metrics=metrics)
+        model.summary()
+        return model
+
 
 
 def random_crop(img, mask, crop_size):

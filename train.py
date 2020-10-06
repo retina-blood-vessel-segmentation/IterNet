@@ -22,7 +22,8 @@ def train(iteration=3,
           minimum_kernel=32,
           epochs=200,
           pretrained_model=None,
-          suffix=''):
+          suffix='',
+          gpus=1):
     model_name = f"Final_Emer_Iteration_{iteration}_cropsize_{crop_size}_lr_{lr}_epochs_{epochs}{suffix}"
 
     if TRANSFER_LRN_DATASET is None:
@@ -36,19 +37,12 @@ def train(iteration=3,
 
     activation = globals()[ACTIVATION]
     model = define_model.get_unet(minimum_kernel=minimum_kernel, do=dropout, lr=lr,
-                                  activation=activation, iteration=iteration)
+                                  activation=activation, iteration=iteration, gpus=gpus, pretrained_model=pretrained_model)
 
     try:
         os.makedirs(f"trained_model/{DATASET}-{TRANSFER_LRN_DATASET}/", exist_ok=True)
         os.makedirs(f"logs/{DATASET}-{TRANSFER_LRN_DATASET}/", exist_ok=True)
     except:
-        pass
-
-    try:
-        model.load_weights(pretrained_model, by_name=True)
-        print('> Loaded pretrained model from path %s.' % pretrained_model)
-    except:
-        print('> Unable to load pretrained model on path %s.' % pretrained_model)
         pass
 
     now = datetime.now()  # current date and time
@@ -77,7 +71,8 @@ if __name__ == "__main__":
 
     dataset = 'DROPS'
     transfer_lrn_dataset = 'UNIMODEL'
-    pretrained_model = f'/home/crvenpaka/ftn/Oftalmologija/segmentacija-mreze/IterNet/trained_model/{transfer_lrn_dataset}/weights.hdf5'
+    pretrained_model = f'./pretrained/{transfer_lrn_dataset}/weights.hdf5'
+    gpus=2 #For use on cluster only. 
 
     # transfer_lrn_dataset = None
     # pretrained_model = None
@@ -94,5 +89,6 @@ if __name__ == "__main__":
         crop_size=128,
         epochs=10,
         suffix='unet-conv1-finetune',
-        need_au=True
+        need_au=True,
+        gpus=gpus
     )
