@@ -5,10 +5,10 @@ import os
 import tensorflow as tf
 from keras.backend import tensorflow_backend
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-config = tf.ConfigProto(gpu_options=tf.GPUOptions(allow_growth=True))
-session = tf.Session(config=config)
-tensorflow_backend.set_session(session)
+#os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+#config = tf.ConfigProto(gpu_options=tf.GPUOptions(allow_growth=True))
+#session = tf.Session(config=config)
+#tensorflow_backend.set_session(session)
 
 from utils import define_model, prepare_dataset, crop_prediction
 from utils.evaluate import evaluate
@@ -54,12 +54,8 @@ def predict(ACTIVATION='ReLU', dropout=0.1, batch_size=32, repeat=4, minimum_ker
             pass
 
     activation = globals()[ACTIVATION]
-    model = define_model.get_unet(minimum_kernel=minimum_kernel, do=dropout, activation=activation, iteration=iteration)
+    model = define_model.get_unet(minimum_kernel=minimum_kernel, do=dropout, activation=activation, iteration=iteration, gpus=2, pretrained_model=f"./trained_model/{test_on_model}/{model_name}.hdf5")
     print("> Model : %s" % model_name)
-    load_path = f"./trained_model/{test_on_model}/{model_name}.hdf5"
-    print("> Loaded trained model from path %s." % load_path)
-    model.load_weights(load_path, by_name=False)
-
     imgs = test_data[0]
     segs = test_data[1]
     masks = test_data[2]
@@ -114,8 +110,8 @@ def predict(ACTIVATION='ReLU', dropout=0.1, batch_size=32, repeat=4, minimum_ker
 if __name__ == "__main__":
 
     evaluate_dataset = 'DROPS'
-    evaluate_on_model = 'UNIMODEL'
-    model_name = 'weights'
+    evaluate_on_model = 'DROPS-UNIMODEL'
+    model_name = 'Final_Emer_Iteration_3_cropsize_128_lr_1e-12_epochs_10unet-conv1-finetune'
 
     print(f'> Testing {evaluate_dataset} dataset, on {evaluate_on_model} model.')
 
