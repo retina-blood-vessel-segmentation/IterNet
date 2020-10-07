@@ -6,6 +6,7 @@ import os.path
 import tensorflow as tf
 import threading
 from PIL import Image
+from keras import metrics as KM
 from keras import backend as K
 from keras import losses
 from keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau
@@ -165,9 +166,9 @@ def get_unet(minimum_kernel=32, do=0, activation=ReLU, iteration=1, lr=1e-3,gpus
 
     metrics = {
         "final_out": [
-            tf.keras.metrics.Accuracy(),
-            tf.keras.metrics.Precision(),
-            tf.keras.metrics.Recall()
+            KM.BinaryAccuracy(),
+            KM.Precision(),
+            KM.Recall()
         ]
     }
 
