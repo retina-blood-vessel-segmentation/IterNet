@@ -112,3 +112,8 @@ venv.bak/
 
 # Jetbrains Pycharm
 .idea
+
+#links
+data
+models
+results
