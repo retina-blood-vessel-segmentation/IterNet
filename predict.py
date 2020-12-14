@@ -5,12 +5,12 @@ import os
 import tensorflow as tf
 from keras.backend import tensorflow_backend
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 config = tf.ConfigProto(gpu_options=tf.GPUOptions(allow_growth=True))
 session = tf.Session(config=config)
 tensorflow_backend.set_session(session)
 
-from utils import define_model, prepare_dataset, crop_prediction
+from utils import define_model, tools
 from utils.evaluate import evaluate
 from keras.layers import ReLU
 from tqdm import tqdm
@@ -20,112 +20,80 @@ import cv2
 from sklearn.metrics import roc_auc_score
 import math
 import pickle
+import click
+import mlflow
+from keras.callbacks import ModelCheckpoint
 
+@click.command()
+@click.option('--activation', default="ReLU")
+@click.option('--dropout', type=click.FLOAT, default=0.1)
+@click.option('--batch_size', type=click.INT, default=32)
+@click.option('--minimum_kernel', type=click.INT, default=32)
+@click.option('--iteration', type=click.INT, default=3)
+@click.option('--lr', type=click.FLOAT, default=1e-3)
+@click.option('--model_path', help='Path to the h5 file with weights used for prediction.')
+@click.option('--test_images_dir', help='A directory containing images for prediction.')
+@click.option('--test_labels_dir', help='A directory containing corresponding groundtruth images for prediction images.')
+@click.option('--test_masks_dir', help='A directory containing corresponding masks for prediction images.')
+@click.option('--dataset', type=click.Choice(['DRIVE', 'STARE', 'CHASE', 'DROPS','DRIVE-eval','STARE-eval','CHASE-eval']),
+              help='A case-sensitive dataset name that will be used for inference. ')
+@click.option('--output_dir', help='Path to the directory where inference results will be saved.')
+def predict(activation, dropout, batch_size, minimum_kernel, iteration, lr, model_path, test_images_dir, test_labels_dir, test_masks_dir, dataset, output_dir):
+    with mlflow.start_run() as run:
+        mlflow.log_params({
+            'dataset': dataset,
+            'model_path': model_path,
+            'lr': lr,
+            'dropout' : dropout,
+            'minimum_kernel': minimum_kernel,
+            'iteration' : iteration,
+            'batch_size' : batch_size
+        })
+        print(f'> Predicting on {dataset} dataset.')
+        size = tools.get_desired_size(dataset)
 
-def predict(ACTIVATION='ReLU', dropout=0.1, batch_size=32, repeat=4, minimum_kernel=32,
-            epochs=200, iteration=3, crop_size=128, stride_size=3, lr=1e-3,
-            model_name=None, DATASET='DRIVE', test_on_model='DRIVE'):
-    prepare_dataset.prepareDataset(DATASET)
-    test_data = [prepare_dataset.getTestData(0, DATASET),
-                 prepare_dataset.getTestData(1, DATASET),
-                 prepare_dataset.getTestData(2, DATASET)]
-
-    IMAGE_SIZE = None
-    if DATASET == 'DRIVE':
-        IMAGE_SIZE = (565, 584)
-    elif DATASET == 'CHASEDB1':
-        IMAGE_SIZE = (999, 960)
-    elif DATASET == 'STARE':
-        IMAGE_SIZE = (700, 605)
-    elif DATASET == 'HRF':
-        IMAGE_SIZE = (3504, 2336)
-    elif DATASET == 'DROPS':
-        IMAGE_SIZE = (640, 480)
-
-
-    gt_list_out = {}
-    pred_list_out = {}
-    for out_id in range(iteration + 1):
-        try:
-            os.makedirs(f"./output/{DATASET}/crop_size_{crop_size}/out{out_id + 1}/", exist_ok=True)
-            gt_list_out.update({f"out{out_id + 1}": []})
-            pred_list_out.update({f"out{out_id + 1}": []})
-        except:
-            pass
-
-    activation = globals()[ACTIVATION]
-    model = define_model.get_unet(minimum_kernel=minimum_kernel, do=dropout, activation=activation, iteration=iteration)
-    print("> Model : %s" % model_name)
-    load_path = f"./trained_model/{test_on_model}/{model_name}.hdf5"
-    print("> Loaded trained model from path %s." % load_path)
-    model.load_weights(load_path, by_name=False)
-
-    imgs = test_data[0]
-    segs = test_data[1]
-    masks = test_data[2]
-
-    for i in tqdm(range(len(imgs))):
-
-        img = imgs[i]
-        seg = segs[i]
-        if masks:
-            mask = masks[i]
-
-        patches_pred, new_height, new_width, adjustImg = crop_prediction.get_test_patches(img, crop_size, stride_size)
-        preds = model.predict(patches_pred)
-
-        out_id = 0
-        for pred in preds:
-            pred_patches = crop_prediction.pred_to_patches(pred, crop_size, stride_size)
-            pred_imgs = crop_prediction.recompone_overlap(pred_patches, crop_size, stride_size, new_height, new_width)
-            pred_imgs = pred_imgs[:, 0:prepare_dataset.DESIRED_DATA_SHAPE[0], 0:prepare_dataset.DESIRED_DATA_SHAPE[0],
-                        :]
-            probResult = pred_imgs[0, :, :, 0]
-            pred_ = probResult
-            with open(f"./output/{DATASET}/crop_size_{crop_size}/out{out_id + 1}/{i + 1:02}.pickle", 'wb') as handle:
-                pickle.dump(pred_, handle, protocol=pickle.HIGHEST_PROTOCOL)
-            pred_ = resize(pred_, IMAGE_SIZE[::-1])
-            if masks:
-                mask_ = mask
-                mask_ = resize(mask_, IMAGE_SIZE[::-1])
-            seg_ = seg
-            seg_ = resize(seg_, IMAGE_SIZE[::-1])
-            gt_ = (seg_ > 0.5).astype(int)
-            gt_flat = []
-            pred_flat = []
-            for p in range(pred_.shape[0]):
-                for q in range(pred_.shape[1]):
-                    if not masks or mask_[p, q] > 0.5:  # Inside the mask pixels only
-                        gt_flat.append(gt_[p, q])
-                        pred_flat.append(pred_[p, q])
-
-            gt_list_out[f"out{out_id + 1}"] += gt_flat
-            pred_list_out[f"out{out_id + 1}"] += pred_flat
-
-            pred_ = 255. * (pred_ - np.min(pred_)) / (np.max(pred_) - np.min(pred_))
-            cv2.imwrite(f"./output/{DATASET}/crop_size_{crop_size}/out{out_id + 1}/{i + 1:02}.png", pred_)
-            out_id += 1
-
-    for out_id in range(iteration + 1)[-1:]:
-        print('\n\n', f"out{out_id + 1}")
-        evaluate(gt_list_out[f"out{out_id + 1}"], pred_list_out[f"out{out_id + 1}"], DATASET)
-
+        act = globals()[activation]
+        model = define_model.get_unet(minimum_kernel=minimum_kernel, do=dropout, activation=act, iteration=iteration, pretrained_model=model_path)
+        probability_maps_dir = os.path.join(output_dir, "probability_maps")
+        segmentation_masks_dir = os.path.join(output_dir, "segmentation_masks")
+        if not os.path.exists(probability_maps_dir):
+            os.makedirs(probability_maps_dir)
+        if not os.path.exists(segmentation_masks_dir):
+            os.makedirs(segmentation_masks_dir)
+        print(f'> Probability maps will be saved at {os.path.abspath(probability_maps_dir)}')
+        print(f'> Segmentation masks will be saved at {os.path.abspath(segmentation_masks_dir)}')
+        flag = True
+        bucket = 50
+        startat = 0
+        outw = 0
+        outh = 0
+        if dataset.startswith("DRIVE"):
+            outw = 565
+            outh = 584
+        elif dataset.startswith("CHASE"):
+            outw = 999
+            outh = 960
+        elif dataset.startswith("STARE"):
+            outw = 700
+            outh = 605
+        elif dataset.startswith("DROPS"):
+            outw = 640
+            outh = 480
+        else:
+            print("Fatal error, unknown dataset.")
+            exit(1)
+        while flag:
+            x_test, _, _, fnames = tools.load_files(test_images_dir, test_labels_dir, size, tools.get_label_pattern_for_dataset(dataset),
+                                        mode='test',startat=startat,bucket=bucket)
+            if len(x_test) == 0:
+                flag = False
+                continue
+            for i, x in enumerate(x_test):                
+                y = model.predict(np.array([x]))[0]
+                y = tools.crop_to_shape(y, (0, outh, outw, 1))
+                y_ = y[0, :, :, 0]
+                cv2.imwrite(os.path.join(probability_maps_dir, f"{fnames[i]}.png"), y_ * 255)
+            startat = startat + bucket
 
 if __name__ == "__main__":
-
-    evaluate_dataset = 'DROPS'
-    evaluate_on_model = 'UNIMODEL'
-    model_name = 'weights'
-
-    print(f'> Testing {evaluate_dataset} dataset, on {evaluate_on_model} model.')
-
-    predict(
-        batch_size=32,
-        lr=1e-3, 
-        epochs=100, 
-        iteration=3, 
-        stride_size=3, 
-        DATASET=evaluate_dataset, 
-        test_on_model=evaluate_on_model,
-        model_name=model_name
-    )
+    predict() # pylint: disable=no-value-for-parameter

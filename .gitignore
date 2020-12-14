@@ -117,3 +117,6 @@ venv.bak/
 data
 models
 results
+
+mlruns/**
+mlruns

@@ -19,7 +19,7 @@ from random import randint
 from utils import data_augmentation, prepare_dataset
 
 
-def get_unet(minimum_kernel=32, do=0, activation=ReLU, iteration=1, lr=1e-3):
+def get_unet(minimum_kernel=32, do=0, activation=ReLU, iteration=1, lr=1e-3, pretrained_model=None):
     inputs = Input((None, None, 3))
     conv1 = Dropout(do)(activation()(Conv2D(minimum_kernel, (3, 3), padding='same')(inputs)))
     conv1 = Dropout(do)(activation()(Conv2D(minimum_kernel, (3, 3), padding='same')(conv1)))
@@ -172,7 +172,13 @@ def get_unet(minimum_kernel=32, do=0, activation=ReLU, iteration=1, lr=1e-3):
 
     model.compile(optimizer=Adam(lr=lr), loss=loss_funcs, metrics=metrics)
     model.summary()
-
+    if pretrained_model is not None:
+        try:
+            model.load_weights(pretrained_model, by_name=False)
+            print('> Loaded pretrained model from path %s.' % pretrained_model)
+        except:
+            print('> Unable to load pretrained model on path %s.' % pretrained_model)
+            exit(-1)
     return model
 
 

@@ -1,0 +1,29 @@
+name: IterNet network for retinal vessel segmentation
+entry_points:
+    test:
+        parameters:
+            activation: {type: string, default: "ReLU"}
+            dropout: {type: float, default: 0.1}
+            batch_size: {type: int, default: 32}
+            minimum_kernel: {type: int, default: 32}
+            iteration: {type: int, default: 3}
+            lr: {type: float, default: 0.001}
+            model_path: path
+            test_images_dir: path
+            test_labels_dir: path
+            test_masks_dir: path
+            dataset: string
+            output_dir: string
+        command: "python predict.py
+            --activation {activation}
+            --dropout {dropout}
+            --batch_size {batch_size}
+            --minimum_kernel {minimum_kernel}
+            --iteration {iteration}
+            --lr {lr}
+            --model_path {model_path}
+            --test_images_dir {test_images_dir}
+            --test_labels_dir {test_labels_dir}
+            --test_masks_dir {test_masks_dir}
+            --dataset {dataset}
+            --output_dir {output_dir}"
